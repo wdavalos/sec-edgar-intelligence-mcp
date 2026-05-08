@@ -10,6 +10,17 @@ import {
     get10KContent,
 } from './sec-api.js';
 
+/**
+ * Extended fields returned by SEC EDGAR company submissions that are not
+ * part of the standard filings response (sic, stateOfIncorporation, etc.)
+ */
+interface CompanySubmissionsExtra {
+    sic?: string;
+    sicDescription?: string;
+    stateOfIncorporation?: string;
+    fiscalYearEnd?: string;
+}
+
 const { charge } = Actor;
 
 const TOOL_PRICES: Record<string, number> = {
@@ -108,6 +119,8 @@ export async function get10KAnnualReport(params: { company_name: string; year?: 
 // ─── get_10q_quarterly_report ─────────────────────────────────────────────────
 
 export async function get10QQuarterlyReport(params: { company_name: string; quarter?: string; year?: number }) {
+    // Note: `quarter` param is accepted for future use but currently the tool
+    // returns the most recent 10-Q regardless of quarter.
     await chargePPE('get_10q_quarterly_report');
     const cik = await resolveCIK(params.company_name);
     const submissions = await getCompanySubmissions(cik);
@@ -202,15 +215,16 @@ export async function getCompanyInfo(params: { company_name: string }) {
 
     // Get XBRL business description
     const xbrl = await getXBRLFacts(String(submissions.cik));
+    const extra = submissions as CompanySubmissionsExtra;
 
     return {
         company_name: submissions.name,
         ticker,
         cik: String(submissions.cik),
-        sic: (submissions as any).sic || '',
-        sic_description: (submissions as any).sicDescription || '',
-        state_of_incorporation: (submissions as any).stateOfIncorporation || '',
-        fiscal_year_end: (submissions as any).fiscalYearEnd || '',
+        sic: extra.sic || '',
+        sic_description: extra.sicDescription || '',
+        state_of_incorporation: extra.stateOfIncorporation || '',
+        fiscal_year_end: extra.fiscalYearEnd || '',
         filing_history: counts,
         business_description: xbrl.entityName ? `Entity: ${xbrl.entityName}` : '(Business description from XBRL)',
         source: 'SEC EDGAR',
