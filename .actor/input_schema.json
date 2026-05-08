@@ -7,12 +7,33 @@
             "title": "Tool name",
             "type": "string",
             "description": "One of: search_company_filings, get_10k_annual_report, get_10q_quarterly_report, get_8k_material_events, get_insider_trades, get_company_info",
+            "editor": "select",
             "enum": ["search_company_filings", "get_10k_annual_report", "get_10q_quarterly_report", "get_8k_material_events", "get_insider_trades", "get_company_info"]
         },
-        "params": {
-            "title": "Tool parameters",
-            "type": "object",
-            "description": "Parameters for the selected tool (same as tool input_schema)"
+        "company_name": {
+            "title": "Company name",
+            "type": "string",
+            "description": "Company name (e.g., Apple, APPLE INC)",
+            "editor": "textfield"
+        },
+        "form_type": {
+            "title": "Form type",
+            "type": "string",
+            "description": "Filter by form type (10-K, 10-Q, 8-K, 4)",
+            "editor": "textfield"
+        },
+        "max_results": {
+            "title": "Max results",
+            "type": "integer",
+            "description": "Maximum number of results to return",
+            "default": 25,
+            "editor": "number"
+        },
+        "year": {
+            "title": "Year",
+            "type": "integer",
+            "description": "Fiscal year filter",
+            "editor": "number"
         }
     },
     "required": ["tool"]
