@@ -61,12 +61,6 @@ export interface CompanyInfo {
     sic_description: string;
     state_of_incorporation: string;
     fiscal_year_end: string;
-    filing_history: {
-        tenK_count: number;
-        tenQ_count: number;
-        eightK_count: number;
-        four_count: number;
-    };
     business_description: string;
 }
 

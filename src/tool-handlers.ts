@@ -21,8 +21,6 @@ interface CompanySubmissionsExtra {
     fiscalYearEnd?: string;
 }
 
-const { charge } = Actor;
-
 const TOOL_PRICES: Record<string, number> = {
     search_company_filings: 0.05,
     get_10k_annual_report: 0.10,

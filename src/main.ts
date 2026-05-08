@@ -87,7 +87,17 @@ async function main() {
                         const toolName = params.name;
                         const toolArgs = params.arguments || {};
                         if (!toolName) return replyError(-32602, 'Missing params.name');
-                        const result = await handleTool(toolName, toolArgs);
+                        // Support flat params with company_name, form_type, etc. at top level
+                        const resolvedArgs = {
+                            ...toolArgs,
+                            company_name: toolArgs.company_name ?? jsonBody.company_name,
+                            form_type: toolArgs.form_type ?? jsonBody.form_type,
+                            date_from: toolArgs.date_from ?? jsonBody.date_from,
+                            date_to: toolArgs.date_to ?? jsonBody.date_to,
+                            max_results: toolArgs.max_results ?? jsonBody.max_results,
+                            year: toolArgs.year ?? jsonBody.year,
+                        };
+                        const result = await handleTool(toolName, resolvedArgs);
                         return reply({ content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] });
                     }
 
@@ -99,7 +109,17 @@ async function main() {
                     }
 
                     if (jsonBody.tool) {
-                        const result = await handleTool(jsonBody.tool, jsonBody.params || {});
+                        // Support both flat (Apify input) and nested (MCP-style) params
+                        const flatParams = {
+                            ...(jsonBody.params || {}),
+                            company_name: jsonBody.company_name,
+                            form_type: jsonBody.form_type,
+                            date_from: jsonBody.date_from,
+                            date_to: jsonBody.date_to,
+                            max_results: jsonBody.max_results,
+                            year: jsonBody.year,
+                        };
+                        const result = await handleTool(jsonBody.tool, flatParams);
                         res.writeHead(200, { 'Content-Type': 'application/json' });
                         res.end(JSON.stringify({ status: 'success', result }));
                         return;
@@ -128,12 +148,14 @@ async function main() {
     process.on('SIGTERM', () => { server.close(() => process.exit(0)); });
 
     // Batch mode
-    const input = await Actor.getInput() as { tool?: string; params?: Record<string, unknown> } | null;
+    const input = await Actor.getInput() as { tool?: string; params?: Record<string, unknown>; company_name?: string } | null;
     if (input) {
-        const { tool, params = {} } = input;
+        const { tool, params = {}, company_name } = input;
         if (tool) {
             console.log(`Running tool: ${tool}`);
-            const result = await handleTool(tool, params);
+            // Flat params: company_name may be at top level or inside params
+            const resolvedParams = company_name ? { ...params, company_name } : params;
+            const result = await handleTool(tool, resolvedParams);
             await Actor.setValue('OUTPUT', result);
         }
     }

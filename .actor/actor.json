@@ -4,7 +4,7 @@
     "name": "sec-edgar-intelligence-mcp",
     "title": "SEC EDGAR Intelligence MCP",
     "description": "AI agent MCP server for SEC EDGAR corporate filings — 10-K, 10-Q, 8-K, Form 4 insider trades, and extracted XBRL financial data.",
-    "version": "0.0.1",
+    "version": "0.0",
     "buildTag": "latest",
     "usesStandbyMode": true,
     "meta": {
