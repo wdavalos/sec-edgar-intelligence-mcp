@@ -25,6 +25,17 @@ describe('resolveCIK', () => {
         const { resolveCIK } = await import('../src/sec-api.js');
         await expect(resolveCIK('NotARealCompany12345')).rejects.toThrow('Company not found');
     });
+
+    it('throws on non-ok response', async () => {
+        mockFetch.mockResolvedValueOnce({
+            ok: false,
+            status: 403,
+            text: () => Promise.resolve('Forbidden')
+        });
+
+        const { resolveCIK } = await import('../src/sec-api.js');
+        await expect(resolveCIK('Apple')).rejects.toThrow('SEC API 403');
+    });
 });
 
 describe('buildFilingList', () => {
@@ -88,6 +99,46 @@ describe('buildFilingList', () => {
         const result = buildFilingList(submissions, { dateFrom: '2024-01-01', maxResults: 10 });
         expect(result).toHaveLength(1);
         expect(result[0].filing_date).toBe('2024-01-01');
+    });
+
+    it('constructs correct document URL', async () => {
+        const { buildFilingList } = await import('../src/sec-api.js');
+        const submissions = {
+            cik: 320193,
+            name: 'Apple',
+            ticker: 'AAPL',
+            filings: {
+                recent: {
+                    accessionNumber: ['0000320193-24-000123'],
+                    filingDate: ['2024-10-25'],
+                    form: ['10-K'],
+                    primaryDocument: ['v123.htm'],
+                }
+            }
+        };
+
+        const result = buildFilingList(submissions, { maxResults: 10 });
+        expect(result[0].document_url).toBe('https://www.sec.gov/Archives/edgar/data/320193/000032019324000123/v123.htm');
+    });
+
+    it('handles empty submissions', async () => {
+        const { buildFilingList } = await import('../src/sec-api.js');
+        const submissions = {
+            cik: 0,
+            name: '',
+            ticker: '',
+            filings: {
+                recent: {
+                    accessionNumber: [],
+                    filingDate: [],
+                    form: [],
+                    primaryDocument: [],
+                }
+            }
+        };
+
+        const result = buildFilingList(submissions, { maxResults: 10 });
+        expect(result).toHaveLength(0);
     });
 });
 
