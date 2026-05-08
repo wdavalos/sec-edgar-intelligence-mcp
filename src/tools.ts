@@ -6,7 +6,7 @@ export const TOOLS = [
             type: 'object',
             properties: {
                 company_name: { type: 'string', description: 'Company name (e.g., "Apple" or "APPLE INC")', required: true },
-                form_type: { type: 'string', description: 'Filter by form type: "10-K", "10-Q", "8-K", "4"' },
+                form_type: { type: 'string', description: 'Filter by form type: "10-K", "10-Q", "8-K", "4"', enum: ["10-K", "10-Q", "8-K", "4", "S-1", "S-3"] },
                 date_from: { type: 'string', description: 'Start date YYYYMMDD' },
                 date_to: { type: 'string', description: 'End date YYYYMMDD' },
                 max_results: { type: 'integer', description: 'Maximum results (default: 25)', default: 25 }
@@ -16,9 +16,18 @@ export const TOOLS = [
         output_schema: {
             type: 'object',
             properties: {
-                query: { type: 'object' },
+                query: {
+                    type: 'object',
+                    properties: {
+                        company_name: { type: 'string' },
+                        form_type: { type: 'string' },
+                        date_from: { type: 'string' },
+                        date_to: { type: 'string' },
+                        max_results: { type: 'integer' }
+                    }
+                },
                 total_filings: { type: 'integer' },
-                filings: { type: 'array' },
+                filings: { type: 'array', items: { type: 'object', properties: { accession_number: { type: 'string' }, form_type: { type: 'string' }, filing_date: { type: 'string' }, document_url: { type: 'string' } } } },
                 source: { type: 'string' }
             }
         },
@@ -45,7 +54,7 @@ export const TOOLS = [
                 accession_number: { type: 'string' },
                 business_description: { type: 'string' },
                 risk_factors: { type: 'array', items: { type: 'string' } },
-                financial_highlights: { type: 'object' },
+                financial_highlights: { type: 'object', properties: { revenue: { type: 'string' }, net_income: { type: 'string' } } },
                 xbrl_confirmed: { type: 'boolean' },
                 source: { type: 'string' }
             }
@@ -59,7 +68,7 @@ export const TOOLS = [
             type: 'object',
             properties: {
                 company_name: { type: 'string', description: 'Company name', required: true },
-                quarter: { type: 'string', description: '"Q1", "Q2", "Q3", "Q4" (default: most recent)' },
+                quarter: { type: 'string', description: '"Q1", "Q2", "Q3", "Q4" (default: most recent)', enum: ["Q1", "Q2", "Q3", "Q4"] },
                 year: { type: 'integer', description: 'Fiscal year (default: most recent)' }
             },
             required: ['company_name']
@@ -71,7 +80,7 @@ export const TOOLS = [
                 ticker: { type: 'string' },
                 period: { type: 'string' },
                 filing_date: { type: 'string' },
-                financial_highlights: { type: 'object' },
+                financial_highlights: { type: 'object', properties: { revenue: { type: 'string' }, net_income: { type: 'string' } } },
                 source: { type: 'string' }
             }
         },
@@ -93,7 +102,7 @@ export const TOOLS = [
             properties: {
                 company_name: { type: 'string' },
                 ticker: { type: 'string' },
-                events: { type: 'array' },
+                events: { type: 'array', items: { type: 'object', properties: { event_date: { type: 'string' }, form_type: { type: 'string' }, event_description: { type: 'string' }, accession_number: { type: 'string' }, document_url: { type: 'string' } } } },
                 total_events: { type: 'integer' },
                 source: { type: 'string' }
             }
@@ -117,7 +126,7 @@ export const TOOLS = [
                 company_name: { type: 'string' },
                 ticker: { type: 'string' },
                 cik: { type: 'string' },
-                trades: { type: 'array' },
+                trades: { type: 'array', items: { type: 'object', properties: { filing_date: { type: 'string' }, accession_number: { type: 'string' }, document_url: { type: 'string' }, form_type: { type: 'string' } } } },
                 total_trades: { type: 'integer' },
                 source: { type: 'string' }
             }
@@ -137,7 +146,7 @@ export const TOOLS = [
         output_schema: {
             type: 'object',
             properties: {
-                name: { type: 'string' },
+                company_name: { type: 'string' },
                 ticker: { type: 'string' },
                 cik: { type: 'string' },
                 sic: { type: 'string' },
