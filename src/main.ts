@@ -9,7 +9,7 @@ interface McpRequest {
 }
 
 // handleRequest must be exported for MCP standby mode — defined OUTSIDE main() for ESM compatibility
-const handleRequest = async (req: McpRequest) => {
+export const handleRequest = async (req: McpRequest) => {
     const { toolName, arguments: args } = req;
     const tool = TOOLS.find((t) => t.name === toolName);
 
@@ -36,9 +36,6 @@ const handleRequest = async (req: McpRequest) => {
 
 async function main() {
     await Actor.init();
-
-    // Export for MCP gateway (ESM compatible)
-    exports.handleRequest = handleRequest;
 
     const server = http.createServer((req, res) => {
         if (req.headers['x-apify-container-server-readiness-probe']) {
