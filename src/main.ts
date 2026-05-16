@@ -140,7 +140,7 @@ async function main() {
         res.end('Not Found');
     });
 
-    const PORT = Actor.config.get('standbyPort') || 3000;
+    const PORT = Actor.config.get('containerPort') || parseInt(process.env.ACTOR_WEB_SERVER_PORT || '3000', 10);
     server.listen(PORT, () => {
         console.log(`SEC EDGAR Intelligence MCP listening on port ${PORT}`);
     });

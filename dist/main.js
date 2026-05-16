@@ -72,7 +72,17 @@ async function main() {
                         const toolArgs = params.arguments || {};
                         if (!toolName)
                             return replyError(-32602, 'Missing params.name');
-                        const result = await handleTool(toolName, toolArgs);
+                        // Support flat params with company_name, form_type, etc. at top level
+                        const resolvedArgs = {
+                            ...toolArgs,
+                            company_name: toolArgs.company_name ?? jsonBody.company_name,
+                            form_type: toolArgs.form_type ?? jsonBody.form_type,
+                            date_from: toolArgs.date_from ?? jsonBody.date_from,
+                            date_to: toolArgs.date_to ?? jsonBody.date_to,
+                            max_results: toolArgs.max_results ?? jsonBody.max_results,
+                            year: toolArgs.year ?? jsonBody.year,
+                        };
+                        const result = await handleTool(toolName, resolvedArgs);
                         return reply({ content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] });
                     }
                     if (method && method.startsWith('tools/')) {
@@ -82,7 +92,17 @@ async function main() {
                         return reply({ content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] });
                     }
                     if (jsonBody.tool) {
-                        const result = await handleTool(jsonBody.tool, jsonBody.params || {});
+                        // Support both flat (Apify input) and nested (MCP-style) params
+                        const flatParams = {
+                            ...(jsonBody.params || {}),
+                            company_name: jsonBody.company_name,
+                            form_type: jsonBody.form_type,
+                            date_from: jsonBody.date_from,
+                            date_to: jsonBody.date_to,
+                            max_results: jsonBody.max_results,
+                            year: jsonBody.year,
+                        };
+                        const result = await handleTool(jsonBody.tool, flatParams);
                         res.writeHead(200, { 'Content-Type': 'application/json' });
                         res.end(JSON.stringify({ status: 'success', result }));
                         return;
@@ -101,7 +121,7 @@ async function main() {
         res.writeHead(404, { 'Content-Type': 'text/plain' });
         res.end('Not Found');
     });
-    const PORT = Actor.config.get('standbyPort') || 3000;
+    const PORT = Actor.config.get('containerPort') || parseInt(process.env.ACTOR_WEB_SERVER_PORT || '3000', 10);
     server.listen(PORT, () => {
         console.log(`SEC EDGAR Intelligence MCP listening on port ${PORT}`);
     });
@@ -109,10 +129,12 @@ async function main() {
     // Batch mode
     const input = await Actor.getInput();
     if (input) {
-        const { tool, params = {} } = input;
+        const { tool, params = {}, company_name } = input;
         if (tool) {
             console.log(`Running tool: ${tool}`);
-            const result = await handleTool(tool, params);
+            // Flat params: company_name may be at top level or inside params
+            const resolvedParams = company_name ? { ...params, company_name } : params;
+            const result = await handleTool(tool, resolvedParams);
             await Actor.setValue('OUTPUT', result);
         }
     }

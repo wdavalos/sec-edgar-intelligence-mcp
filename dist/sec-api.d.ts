@@ -1,8 +1,9 @@
 import type { CompanySubmissions, FilingDocument, XBRLCompanyFacts, InsiderTrade, MaterialEvent } from './types.js';
 /**
  * Resolve company name to CIK number.
- * Primary: efts.sec.gov/LATEST/search-index
- * Fallback: parse filings to find CIK
+ * Uses efts.sec.gov/LATEST/search-index which returns Elasticsearch results.
+ * Response shape: { hits: { hits: [ { _source: { ciks: [cikStr], display_names: [nameStr] } } ] } }
+ * Display name format: "APPLE INC  (AAPL)  (CIK 0000320193)"
  */
 export declare function resolveCIK(companyName: string): Promise<string>;
 /**
@@ -37,7 +38,6 @@ export declare function buildInsiderTrades(submissions: CompanySubmissions, maxR
  * Fetch and parse 10-K for business description + risk factors.
  * Note: Full HTML parsing of SEC documents requires Cheerio.
  * For MVP: return XBRL facts + first 500 chars of business description placeholder.
- * TODO: Use Cheerio to parse actual 10-K HTML for rich text extraction.
  */
 export declare function get10KContent(cik: string, accessionNumber: string, primaryDocument: string): Promise<{
     business_description: string;

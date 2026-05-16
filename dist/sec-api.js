@@ -29,23 +29,55 @@ async function throttledFetch(url) {
 // ─── CIK Resolution ──────────────────────────────────────────────────────────
 /**
  * Resolve company name to CIK number.
- * Primary: efts.sec.gov/LATEST/search-index
- * Fallback: parse filings to find CIK
+ * Uses efts.sec.gov/LATEST/search-index which returns Elasticsearch results.
+ * Response shape: { hits: { hits: [ { _source: { ciks: [cikStr], display_names: [nameStr] } } ] } }
+ * Display name format: "APPLE INC  (AAPL)  (CIK 0000320193)"
  */
 export async function resolveCIK(companyName) {
+    if (!companyName || typeof companyName !== 'string') {
+        throw new Error(`resolveCIK requires a non-empty string, got: ${JSON.stringify(companyName)}`);
+    }
     const encoded = encodeURIComponent(companyName.toUpperCase().trim());
     const url = `${BASE_EFTS}/LATEST/search-index?q=${encoded}`;
     const resp = await throttledFetch(url);
     const data = await resp.json();
-    if (!data.results || data.results.length === 0) {
+    const hits = data?.hits?.hits;
+    if (!hits || hits.length === 0) {
         throw new Error(`Company not found on SEC EDGAR: "${companyName}". Try exact name with Inc/Ltd/Corp suffix.`);
     }
-    // Partial match via includes() is preferred; fallback to first result if no exact match
-    const partialMatch = data.results.find((r) => r.name.toUpperCase() === companyName.toUpperCase() ||
-        r.name.toUpperCase().includes(companyName.toUpperCase()));
-    // Use partial match if found, otherwise fall back to first result
-    const cikNum = partialMatch ? partialMatch.cik : data.results[0].cik;
-    return String(cikNum).padStart(10, '0');
+    // Search hits contain display_names like "APPLE INC  (AAPL)  (CIK 0000320193)"
+    // The first hit may not be the best match. Search across all hits.
+    const searchName = companyName.toUpperCase().trim();
+    let matchedCik = null;
+    for (const hit of hits) {
+        const displayNames = hit?._source?.display_names || [];
+        const ciks = hit?._source?.ciks || [];
+        for (let i = 0; i < displayNames.length; i++) {
+            const displayName = displayNames[i] || '';
+            const cikStr = ciks[i] || '';
+            if (!cikStr)
+                continue;
+            // Display name format: "APPLE COMPUTER INC  (AAPL)  (CIK 0000320193)"
+            // Extract company name part (before first parenthesis)
+            const companyPart = displayName.split('(')[0].trim().toUpperCase();
+            // Exact match on company part, or display name includes search term
+            if (companyPart === searchName || displayName.toUpperCase().includes(searchName)) {
+                matchedCik = cikStr.padStart(10, '0');
+                break;
+            }
+            // Fallback: search term appears in company part (partial match)
+            if (companyPart.includes(searchName) || searchName.includes(companyPart)) {
+                matchedCik = cikStr.padStart(10, '0');
+                break;
+            }
+        }
+        if (matchedCik)
+            break;
+    }
+    if (!matchedCik) {
+        throw new Error(`Company not found on SEC EDGAR: "${companyName}". Try exact name with Inc/Ltd/Corp suffix.`);
+    }
+    return matchedCik;
 }
 // ─── Company Submissions ──────────────────────────────────────────────────────
 /**
@@ -71,9 +103,17 @@ export function extractTicker(submissions) {
 export async function getXBRLFacts(cik) {
     const cikPadded = cik.padStart(10, '0');
     const url = `${BASE_DATA}/xbrl/companyfacts/CIK${cikPadded}.json`;
-    const resp = await throttledFetch(url);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const data = await resp.json();
+    let data;
+    try {
+        const resp = await throttledFetch(url);
+        data = await resp.json();
+    }
+    catch (err) {
+        // XBRL endpoint may return 404 for small reporting companies or new listings
+        // Return empty facts rather than failing the entire tool
+        log.warning(`XBRL facts unavailable for CIK ${cikPadded}: ${err instanceof Error ? err.message : String(err)}`);
+        return { entityName: '', fiscalYear: 0, revenue: undefined, netIncome: undefined, totalAssets: undefined, cashAndEquivalents: undefined };
+    }
     // Extract facts from usgaap namespace
     const facts = data?.facts?.['us-gaap'] || {};
     const extract = (tag) => {
@@ -167,8 +207,8 @@ export function buildInsiderTrades(submissions, maxResults) {
         const docUrl = `https://www.sec.gov/Archives/edgar/data/${submissions.cik}/${accessionNoDashes}/${recent.primaryDocument[i]}`;
         trades.push({
             filing_date: recent.filingDate[i],
-            owner_name: docUrl, // document URL is the best proxy for now
-            owner_title: accession, // accession number as a reference
+            owner_name: docUrl, // document URL as the best proxy available
+            owner_title: accession, // accession number as reference
             transaction_type: recent.form[i],
             securities_owned: 0, // requires XML parsing
             transaction_shares: 0, // requires XML parsing
@@ -187,7 +227,6 @@ export function buildInsiderTrades(submissions, maxResults) {
  * Fetch and parse 10-K for business description + risk factors.
  * Note: Full HTML parsing of SEC documents requires Cheerio.
  * For MVP: return XBRL facts + first 500 chars of business description placeholder.
- * TODO: Use Cheerio to parse actual 10-K HTML for rich text extraction.
  */
 export async function get10KContent(cik, accessionNumber, primaryDocument) {
     const accessionNoDashes = accessionNumber.replace(/-/g, '');
