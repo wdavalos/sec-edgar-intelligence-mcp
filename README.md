@@ -1,5 +1,6 @@
 # SEC EDGAR Intelligence MCP
 
+> [ScraperFleet data page](https://scraperfleet.com/actors/sec-edgar-intelligence-mcp/)
 > AI agent MCP server for SEC EDGAR corporate filings — 10-K annual reports, 10-Q quarterly filings, 8-K material events, Form 4 insider trades, and extracted XBRL financial data.
 
 **MCP Endpoint:** https://sec-edgar-intelligence-mcp.apify.actor/mcp
