@@ -1,5 +1,6 @@
 # SEC EDGAR Intelligence MCP
 
+**Run it on the Apify Store:** https://apify.com/red.cars/sec-edgar-intelligence-mcp
 > [ScraperFleet data page](https://scraperfleet.com/actors/sec-edgar-intelligence-mcp/)
 > AI agent MCP server for SEC EDGAR corporate filings — 10-K annual reports, 10-Q quarterly filings, 8-K material events, Form 4 insider trades, and extracted XBRL financial data.
 
